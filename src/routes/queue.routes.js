@@ -12,8 +12,16 @@ router.post('/api/add-to-queue-scraper', checkSecretKey, async (req, res) => {
 });
 
 router.post('/api/remove-to-queue-scraper', checkSecretKey, async (req, res) => {
-  const queue = await queueService.removeFromQueue(req.body);
-  res.status(200).json({ message: 'Berhasil dihapus dari queue (jika ada)', queue });
+    console.log('=== REMOVE QUEUE ===');
+    console.log(req.headers);
+    console.log(req.body);
+
+    const queue = await queueService.removeFromQueue(req.body);
+
+    res.status(200).json({
+        message: 'Berhasil dihapus',
+        queue,
+    });
 });
 
 router.get('/api/queue', checkSecretKey, async (req, res) => {
