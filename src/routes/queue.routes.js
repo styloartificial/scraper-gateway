@@ -16,7 +16,7 @@ router.post('/api/remove-to-queue-scraper', checkSecretKey, async (req, res) => 
   res.status(200).json({ message: 'Berhasil dihapus dari queue (jika ada)', queue });
 });
 
-router.get('/queue', checkSecretKey, async (req, res) => {
+router.get('/api/queue', checkSecretKey, async (req, res) => {
   const queue = await queueService.getQueue();
   res.status(200).json(queue);
 });
