@@ -29,6 +29,10 @@ async function searchProductsWithRetry(params) {
         params,
         headers: { 'API-Key': keyObj.apiKey },
       });
+
+      // Request berhasil -> key ini benar-benar terpakai, kurangi sisa kreditnya.
+      await apiKeyRepository.decrementCredit(keyObj.apiKey, 1);
+
       return response.data;
     } catch (error) {
       lastError = error;

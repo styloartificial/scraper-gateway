@@ -26,4 +26,17 @@ async function markAsExhausted(apiKey) {
   return updated;
 }
 
-module.exports = { findAll, findAvailable, markAsExhausted };
+// Dipanggil setiap kali sebuah API key berhasil dipakai untuk hit API,
+// supaya creditLeft mencerminkan sisa kuota yang sebenarnya, bukan cuma
+// berubah saat exhausted. Math.max(0, ...) supaya tidak pernah minus
+// kalau ada race/selisih kecil dengan kredit asli di provider.
+async function decrementCredit(apiKey, amount = 1) {
+  const keys = await store.readAll();
+  const updated = keys.map((k) =>
+    k.apiKey === apiKey ? { ...k, creditLeft: Math.max(0, k.creditLeft - amount) } : k
+  );
+  await store.writeAll(updated);
+  return updated;
+}
+
+module.exports = { findAll, findAvailable, markAsExhausted, decrementCredit };
