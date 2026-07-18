@@ -1,7 +1,7 @@
 const path = require('path');
 const JsonFileStore = require('../utils/jsonFileStore');
 
-const QUEUE_PATH = path.join(__dirname, '..', '..', 'data', 'queue.json');
+const QUEUE_PATH = path.join(__dirname, '../../..', 'queue.json');
 const store = new JsonFileStore(QUEUE_PATH, []);
 
 async function findAll() {
