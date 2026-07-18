@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Environment variables (JANGAN commit, ini sumber kebocoran secret key sebelumnya)
+.env
+
+# Runtime data files (state, bukan source code — cukup versi .example yang di-commit)
+data/queue.json
+data/apikeys.json
+
+# Logs
+npm-debug.log*
+*.log
+
+# OS files
+.DS_Store
