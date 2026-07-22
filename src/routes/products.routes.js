@@ -1,12 +1,11 @@
 const express = require('express');
-const { checkSecretKey } = require('../middleware/auth');
 const productSearchService = require('../services/productSearchService');
 
 const router = express.Router();
 
 // search_query bisa dikirim lewat query string, dengan default supaya
 // endpoint tetap bisa dites langsung dari browser seperti versi lama.
-router.get('/api/search-products', checkSecretKey, async (req, res) => {
+router.get('/api/search-products', async (req, res) => {
   const searchQuery = req.query.search_query || 'Baju Koko';
   const marketplace = req.query.marketplace || 'id';
 

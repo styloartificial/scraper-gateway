@@ -1,61 +1,68 @@
 const axios = require('axios');
 const env = require('../config/env');
-const apiKeyRepository = require('../repositories/apiKeyRepository');
-const logger = require('../utils/logger');
 
-function isCreditExhaustedError(error) {
-  const status = error.response?.status;
-  const message = error.response?.data?.message || '';
-  return status === 402 || status === 429 || /credit/i.test(message);
-}
+const CHARTED_SEA_LAZADA_URL = 'https://continuous-scraper.common.chartedapi.com/scraping-tasks/lazada/run';
 
-/**
- * Cari produk ke Lazada, kalau satu API key habis kredit, otomatis coba
- * key berikutnya yang masih tersedia (round-robin sederhana lewat urutan
- * array di apikeys.json).
- */
-async function searchProductsWithRetry(params) {
-  const availableKeys = await apiKeyRepository.findAvailable();
-
-  if (availableKeys.length === 0) {
-    throw new Error('Semua API key sudah habis kreditnya.');
-  }
-
-  let lastError = null;
-
-  for (const keyObj of availableKeys) {
-    try {
-      const response = await axios.get(env.lazadaSearchUrl, {
-        params,
-        headers: { 'API-Key': keyObj.apiKey },
-      });
-
-      // Request berhasil -> key ini benar-benar terpakai, kurangi sisa kreditnya.
-      await apiKeyRepository.decrementCredit(keyObj.apiKey, 1);
-
-      return response.data;
-    } catch (error) {
-      lastError = error;
-
-      if (isCreditExhaustedError(error)) {
-        logger.warn(`API key habis kredit, tandai exhausted dan coba key berikutnya`);
-        await apiKeyRepository.markAsExhausted(keyObj.apiKey);
-        continue;
-      }
-
-      throw error;
-    }
-  }
-
-  throw lastError || new Error('Semua API key gagal digunakan.');
+function formatSearchQuery(searchQuery) {
+  return String(searchQuery).trim().replace(/\s+/g, '%20');
 }
 
 async function searchProducts({ search_query: searchQuery, marketplace = 'id', limit = 10 }) {
-  const data = await searchProductsWithRetry({
-    search_query: searchQuery,
-    marketplace,
+  const authToken = env.chartedSeaApiToken || process.env.AUTH_TOKEN;
+
+  if (!authToken) {
+    throw new Error('AUTH_TOKEN / chartedSeaApiToken belum di-set.');
+  }
+
+  const formattedSearchQuery = formatSearchQuery(searchQuery);
+  const searchUrl = `https://www.lazada.co.id/catalog/?q=${formattedSearchQuery}`;
+
+  const body = {
+    requests: [{ url: searchUrl }],
+    language: 'id',
+    emulateMobileDevice: true,
+    cleanResponseBody: true,
+  };
+
+  const response = await axios.post(CHARTED_SEA_LAZADA_URL, body, {
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      'Content-Type': 'application/json',
+    },
+    params: { autoCancelAfterSec: 120 },
   });
-  return data.products?.slice(0, limit) || [];
+
+  // Response selalu array (1 elemen per request yang dikirim di "requests")
+  const tasks = Array.isArray(response.data) ? response.data : [response.data];
+  const task = tasks[0];
+
+  if (!task || task.status !== 'SUCCESS') {
+    throw new Error(
+      `Lazada scraping task gagal (status: ${task?.status || 'UNKNOWN'}): ${task?.errorMessage || 'tanpa pesan error'}`
+    );
+  }
+
+  const responseBody =
+    typeof task.responseBody === 'string'
+      ? JSON.parse(task.responseBody)
+      : task.responseBody;
+
+  const products = responseBody?.products || [];
+
+  const top10Products = products.slice(0, limit).map(product => ({
+    title: product.name,
+    pricing: {
+      original: product.originalPrice ?? product.price,
+    },
+    sold_count: product.soldCount,
+    reviews: {
+      average_rating: product.ratingScore ?? 0,
+    },
+    thumbnail_url: product.imageUrl,
+    product_url: product.pageUrl,
+  }));
+
+  return top10Products;
 }
 
-module.exports = { searchProducts, searchProductsWithRetry };
+module.exports = { searchProducts };
