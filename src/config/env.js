@@ -15,4 +15,5 @@ module.exports = {
   port: Number(process.env.PORT) || 3001,
   chartedSeaApiToken: process.env.CHARTED_SEA_API_TOKEN,
   nodeEnv: process.env.NODE_ENV || 'development',
+  secretKey: process.env.SECRET_KEY || '',
 };
